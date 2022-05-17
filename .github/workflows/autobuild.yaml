@@ -21,7 +21,7 @@ jobs:
   check-for-updates:
     runs-on: ubuntu-latest
     outputs:
-      biblogram: ${{ steps.biblogram.outputs.bibliogram-out-of-date }}
+      bibliogram: ${{ steps.bibliogram.outputs.bibliogram-out-of-date }}
       scribe: ${{ steps.scribe.outputs.scribe-out-of-date }}
     # clone repo
     steps:
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CONTEXT: .
-      CLONE_REPO: false
+      CLONE_REPO: "false"
       IMAGE_NAME: fariszr/bibliogram
       DOCKER_FILE: Dockerfile-bibliogram
       HASH_FILE: build-hashes/bibliogram.txt
@@ -149,7 +149,7 @@ jobs:
     if: ${{ needs.check-for-updates.outputs.scribe == 'true' }} 
     runs-on: ubuntu-latest
     env:
-      CLONE_REPO: true
+      CLONE_REPO: "true"
       IMAGE_NAME: fariszr/scribe
       DOCKER_FILE: Dockerfile-scribe
       HASH_FILE: build-hashes/scribe.txt
