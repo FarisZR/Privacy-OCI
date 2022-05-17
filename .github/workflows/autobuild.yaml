@@ -1,4 +1,4 @@
-name: Docker
+name: Check for updates and build
 
 # This workflow uses actions that are not certified by GitHub.
 # They are provided by a third-party and are governed by
@@ -38,7 +38,7 @@ jobs:
 
   build-bibliogram:
     needs: check-for-updates
-    if: ${{ needs.check-for-updates.outputs.bibliogram-out-of-date == 'true' }} 
+    if: ${{ needs.check-for-updates.outputs.bibliogram == 'true' }} 
     runs-on: ubuntu-latest
     env:
       CONTEXT: .
@@ -146,7 +146,7 @@ jobs:
 
   build-scribe:
     needs: check-for-updates
-    if: ${{ needs.check-for-updates.outputs.scribe-out-of-date == 'true' }} 
+    if: ${{ needs.check-for-updates.outputs.scribe == 'true' }} 
     runs-on: ubuntu-latest
     env:
       CLONE_REPO: true
