@@ -1,0 +1,253 @@
+name: Docker
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+on:
+  # Possibility to run it manually
+  workflow_dispatch:
+  # Automated
+  schedule:
+    # Run Every hour
+    - cron: '0 * * * *'
+
+env:
+  # Use docker.io for Docker Hub if empty
+  REGISTRY: ghcr.io
+
+jobs:
+  check-for-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      biblogram: ${{ steps.biblogram.outputs.bibliogram-out-of-date }}
+      scribe: ${{ steps.scribe.outputs.scribe-out-of-date }}
+    # clone repo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Pull Bibliogram remote commits
+        id: bibliogram
+        run: sh remote-check.sh https://git.sr.ht/~cadence/bibliogram bibliogram-local.txt bibliogram-hash.txt bibliogram-out-of-date
+
+      - name: Pull Scribe remote commits
+        id: scribe
+        run: sh remote-check.sh https://git.sr.ht/~edwardloveall/scribe scribe-local.txt scribe-hash.txt scribe-out-of-date
+
+  build-bibliogram:
+    needs: check-for-updates
+    if: ${{ needs.check-for-updates.outputs.bibliogram-out-of-date == 'true' }} 
+    runs-on: ubuntu-latest
+    env:
+      CONTEXT: .
+      CLONE_REPO: false
+      IMAGE_NAME: fariszr/bibliogram
+      DOCKER_FILE: Dockerfile-bibliogram
+      HASH_FILE: build-hashes/bibliogram.txt
+      APP_NAME: bibliogram
+      REPO: https://git.sr.ht/~cadence/bibliogram
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install the cosign tool except on PR
+      # https://github.com/sigstore/cosign-installer
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v2.3.0
+        with:
+          cosign-release: 'v1.7.1'
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: all
+
+      # Workaround: https://github.com/docker/build-push-action/issues/461
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Clone ${{ env.APP_NAME }} repo
+        if: ${{ env.CLONE_REPO == true }}
+        run: | 
+          git clone ${{ env.REPO }} ${{ env.CONTEXT }}
+          cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v3
+        with:
+          context: ${{ env.CONTEXT }}
+          file: ${{ env.DOCKER_FILE }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Sign the resulting Docker image digest except on PRs.
+      # This will only write to the public Rekor transparency log when the Docker
+      # repository is public to avoid leaking data.  If you would like to publish
+      # transparency data even for private images, pass --force to cosign below.
+      # https://github.com/sigstore/cosign
+      - name: Sign the published Docker image
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        # This step uses the identity token to provision an ephemeral certificate
+        # against the sigstore community Fulcio instance.
+        run: cosign sign ${{ steps.meta.outputs.tags }}@${{ steps.build-and-push.outputs.digest }}
+
+      - name: Update build commit
+        run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
+
+      - name: Commit
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ${{ env.HASH_FILE }}
+          git commit -m "update ${{ env.APP_NAME }} build commit"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+  build-scribe:
+    needs: check-for-updates
+    if: ${{ needs.check-for-updates.outputs.scribe-out-of-date == 'true' }} 
+    runs-on: ubuntu-latest
+    env:
+      CLONE_REPO: true
+      IMAGE_NAME: fariszr/scribe
+      DOCKER_FILE: Dockerfile-scribe
+      HASH_FILE: build-hashes/scribe.txt
+      APP_NAME: scribe
+      REPO: https://git.sr.ht/~cadence/bibliogram
+      CONTEXT: ./scribe
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install the cosign tool except on PR
+      # https://github.com/sigstore/cosign-installer
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v2.3.0
+        with:
+          cosign-release: 'v1.7.1'
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: all
+
+      # Workaround: https://github.com/docker/build-push-action/issues/461
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Clone ${{ env.APP_NAME }} repo
+        if: ${{ env.CLONE_REPO == true }}
+        run: | 
+          git clone ${{ env.REPO }} ${{ env.CONTEXT }}
+          cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v3
+        with:
+          context: ${{ env.CONTEXT }}
+          file: ${{ env.DOCKER_FILE }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Sign the resulting Docker image digest except on PRs.
+      # This will only write to the public Rekor transparency log when the Docker
+      # repository is public to avoid leaking data.  If you would like to publish
+      # transparency data even for private images, pass --force to cosign below.
+      # https://github.com/sigstore/cosign
+      - name: Sign the published Docker image
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        # This step uses the identity token to provision an ephemeral certificate
+        # against the sigstore community Fulcio instance.
+        run: cosign sign ${{ steps.meta.outputs.tags }}@${{ steps.build-and-push.outputs.digest }}
+
+      - name: Update build commit
+        run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
+
+      - name: Commit
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ${{ env.HASH_FILE }}
+          git commit -m "update ${{ env.APP_NAME }} build commit"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
