@@ -34,7 +34,7 @@ jobs:
 
       - name: Pull Scribe remote commits
         id: scribe
-        run: sh remote-check.sh https://git.sr.ht/~edwardloveall/scribe scribe-local.txt build-hashes/bibliogram.txt scribe-out-of-date
+        run: sh remote-check.sh https://git.sr.ht/~edwardloveall/scribe scribe-local.txt build-hashes/scribe.txt scribe-out-of-date
 
   build-bibliogram:
     needs: check-for-updates
