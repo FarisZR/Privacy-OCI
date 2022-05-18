@@ -42,14 +42,15 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CONTEXT: .
-      CLONE_REPO: "false"
+      LICENSE: AGPL-3.0
+      CLONE_REPO: ${{ false }}
       IMAGE_NAME: fariszr/bibliogram
       DOCKER_FILE: Dockerfile-bibliogram
       HASH_FILE: build-hashes/bibliogram.txt
       APP_NAME: bibliogram
       REPO: https://git.sr.ht/~cadence/bibliogram
     permissions:
-      contents: read
+      contents: write
       packages: write
       # This is used to complete the identity challenge
       # with sigstore/fulcio when running outside of PRs.
@@ -93,9 +94,10 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          labels: org.opencontainers.image.licenses=${{ env.LICENSE }}
 
-      - name: Clone ${{ env.APP_NAME }} repo
-        if: ${{ env.CLONE_REPO == true }}
+      - name: Clone git repo for docker context
+        if: env.CLONE_REPO == 'true'
         run: | 
           git clone ${{ env.REPO }} ${{ env.CONTEXT }}
           cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
@@ -149,15 +151,16 @@ jobs:
     if: ${{ needs.check-for-updates.outputs.scribe == 'true' }} 
     runs-on: ubuntu-latest
     env:
-      CLONE_REPO: "true"
+      CLONE_REPO: ${{ true }}
+      LICENSE: AGPL-3.0
       IMAGE_NAME: fariszr/scribe
       DOCKER_FILE: Dockerfile-scribe
       HASH_FILE: build-hashes/scribe.txt
       APP_NAME: scribe
-      REPO: https://git.sr.ht/~cadence/bibliogram
+      REPO: https://git.sr.ht/~edwardloveall/scribe
       CONTEXT: ./scribe
     permissions:
-      contents: read
+      contents: write
       packages: write
       # This is used to complete the identity challenge
       # with sigstore/fulcio when running outside of PRs.
@@ -202,8 +205,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: Clone ${{ env.APP_NAME }} repo
-        if: ${{ env.CLONE_REPO == true }}
+      - name: Clone git repo for docker context
+        if: env.CLONE_REPO == 'true'
         run: | 
           git clone ${{ env.REPO }} ${{ env.CONTEXT }}
           cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
