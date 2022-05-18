@@ -1,5 +1,5 @@
 #!/bin/bash
-# $1=git link $2 = local has file $3 remote/file that contains the hash in the repo $4 output name
+# $1=git link $2 = local hash file $3 remote/file that contains the hash in the repo $4 output name
 git ls-remote $1 HEAD > $2
 
 local="$2"
