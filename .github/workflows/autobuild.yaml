@@ -30,11 +30,11 @@ jobs:
 
       - name: Pull Bibliogram remote commits
         id: bibliogram
-        run: sh remote-check.sh https://git.sr.ht/~cadence/bibliogram bibliogram-local.txt bibliogram-hash.txt bibliogram-out-of-date
+        run: sh remote-check.sh https://git.sr.ht/~cadence/bibliogram bibliogram-local.txt build-hashes/bibliogram.txt bibliogram-out-of-date
 
       - name: Pull Scribe remote commits
         id: scribe
-        run: sh remote-check.sh https://git.sr.ht/~edwardloveall/scribe scribe-local.txt scribe-hash.txt scribe-out-of-date
+        run: sh remote-check.sh https://git.sr.ht/~edwardloveall/scribe scribe-local.txt build-hashes/bibliogram.txt scribe-out-of-date
 
   build-bibliogram:
     needs: check-for-updates
@@ -137,6 +137,7 @@ jobs:
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          git pull
           git add ${{ env.HASH_FILE }}
           git commit -m "update ${{ env.APP_NAME }} build commit"
 
@@ -246,6 +247,7 @@ jobs:
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          git pull
           git add ${{ env.HASH_FILE }}
           git commit -m "update ${{ env.APP_NAME }} build commit"
 
