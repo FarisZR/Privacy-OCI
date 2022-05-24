@@ -118,7 +118,7 @@ jobs:
           file: ${{ env.DOCKER_FILE }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -134,7 +134,7 @@ jobs:
           COSIGN_EXPERIMENTAL: "true"
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
-        run: cosign sign ${{ steps.meta.outputs.tags }}@${{ steps.build-and-push.outputs.digest }}
+        run: cosign sign ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest@${{ steps.build-and-push.outputs.digest }}
 
       - name: Update build commit
         run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
@@ -228,7 +228,7 @@ jobs:
           file: ${{ env.DOCKER_FILE }}
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -244,7 +244,7 @@ jobs:
           COSIGN_EXPERIMENTAL: "true"
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
-        run: cosign sign ${{ steps.meta.outputs.tags }}@${{ steps.build-and-push.outputs.digest }}
+        run: cosign sign ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest@${{ steps.build-and-push.outputs.digest }}
 
       - name: Update build commit
         run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
