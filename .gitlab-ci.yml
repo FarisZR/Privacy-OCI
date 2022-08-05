@@ -94,12 +94,12 @@ bibliogram-update-build-hash:
     REPO: https://git.sr.ht/~cadence/bibliogram
   before_script:
     # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
-    # - |
-    #   if [ "$bibliogram_out_of_date" = true ]; then
-    #     echo "true, needs update"
-    #   else
-    #     echo "false, no need for update, no build needed" && exit 0
-    #   fi
+    - |
+      if [ "$bibliogram_out_of_date" = true ]; then
+        echo "true, needs update"
+      else
+        echo "false, no need for update, no build needed" && exit 0
+      fi
     - apk add git
     - git remote set-url origin https://${CI_REGISTRY_USER}:${API_TOKEN}@${CI_REPOSITORY_URL#*@}
     # Set the displayed user with the commits that are about to be made
