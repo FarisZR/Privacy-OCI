@@ -80,7 +80,7 @@ bibliogram-buildx:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
   script:
     - docker buildx create --use
-    - docker buildx build --push --pull -t $CI_REGISTRY/$IMAGE_NAME:latest --cache-from $CI_REGISTRY/$CACHE_IMAGE:latest --cache-to $CI_REGISTRY/$CACHE_IMAGE:latest --file $DOCKER_FILE --platform linux/amd64,linux/arm64 .
+    - docker buildx build --push --pull -t $CI_REGISTRY/$IMAGE_NAME:latest --cache-from $CI_REGISTRY/$CACHE_IMAGE:latest --cache-to $CI_REGISTRY/$CACHE_IMAGE:latest --file $DOCKER_FILE --platform linux/amd64,linux/arm64,linux/arm/v7 .
 
 bibliogram-update-build-hash:
   image: alpine:latest
