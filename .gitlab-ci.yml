@@ -27,7 +27,7 @@ workflow:
         bibliogram_out_of_date: "true"
         scribe_out_of_date: "true"
     # Allow run using the Run pipeline button
-    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_COMMIT_TITLE =~ /skip-ci$/
       when: never
 
@@ -37,15 +37,16 @@ stages:
   - build-scribe
 
 fetch-commit-hash:
-  rules:
-  - if: $CI_PIPELINE_SOURCE == "push"
-    # always run on Dockerfile or CI/CD changes, reagrdless if the packages are out-of-date or not
-    changes:
-      - .gitlab-ci.yml
-      - Dockerfile-bibliogram
-      - Dockerfile-scribe
   image: alpine:latest
   stage: check-for-updates
+  # don't run when variables are already set.
+  before_script:
+    - |
+      if [ "$bibliogram_out_of_date" = true ]; then
+        echo "Variable already set, won't run checks" && exit 0
+      else
+        echo "Variable isn't set, continue with checks"
+      fi
   script:
     - apk add git
     - sh remote-check.sh https://git.sr.ht/~cadence/bibliogram bibliogram-local.txt build-hashes/bibliogram.txt bibliogram_out_of_date
@@ -128,7 +129,7 @@ scribe-clone-repo:
   before_script:
     # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
     - |
-      if [ "$bibliogram_out_of_date" = true ]; then
+      if [ "$scribe_out_of_date" = true ]; then
         echo "true, needs update"
       else
         echo "false, no need for update, no build needed" && exit 0
