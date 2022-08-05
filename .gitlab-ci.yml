@@ -1,0 +1,205 @@
+# This file is a template, and might need editing before it works on your project.
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Docker.gitlab-ci.yml
+
+# Build a Docker image with CI/CD and push to the GitLab registry.
+# Docker-in-Docker documentation: https://docs.gitlab.com/ee/ci/docker/using_docker_build.html
+#
+# This template uses one generic job with conditional builds
+# for the default branch and all other (MR) branches.
+# only trigger on Push and schedule
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - .gitlab-ci.yml
+        - remote-check.sh
+        - Dockerfile-bibliogram
+        - Dockerfile-scribe
+    - if: $CI_COMMIT_TITLE =~ /skip-ci$/
+      when: never
+    - if: $CI_COMMIT_BRANCH == "$CI_DEFAULT_BRANCH"
+
+stages:
+  - check-for-updates
+  - build-bibliogram
+  - build-scribe
+
+fetch-commit-hash:
+  image: alpine:latest
+  stage: check-for-updates
+  script:
+    - apk add git
+    - sh remote-check.sh https://git.sr.ht/~cadence/bibliogram bibliogram-local.txt build-hashes/bibliogram.txt bibliogram_out_of_date
+    - sh remote-check.sh https://git.sr.ht/~edwardloveall/scribe scribe-local.txt build-hashes/scribe.txt scribe_out_of_date
+    - cat check.env
+  # pass environment variable file to other dependent jobs, https://docs.gitlab.com/ee/ci/variables/#pass-an-environment-variable-to-another-job
+  artifacts:
+    reports:
+      dotenv: check.env
+
+bibliogram-buildx:
+  image: jdrouet/docker-with-buildx:stable
+  needs:
+    - fetch-commit-hash
+  services:
+    - docker:dind
+  stage: build-bibliogram
+  variables:
+    CONTEXT: .
+    IMAGE_NAME: fariszr/privacy-oci/bibliogram
+    CACHE_IMAGE: fariszr/privacy-oci/bibliogram-cache
+    DOCKER_FILE: Dockerfile-bibliogram
+  before_script:
+    # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
+    - |
+      if [ "$bibliogram_out_of_date" = true ]; then
+        echo "true, needs update"
+      else
+        echo "false, no need for update, no build needed" && exit 0
+      fi
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - docker buildx create --use
+    - docker buildx build --push --pull -t $CI_REGISTRY/$IMAGE_NAME:latest --cache-from $CI_REGISTRY/$CACHE_IMAGE:latest --cache-to $CI_REGISTRY/$CACHE_IMAGE:latest --file $DOCKER_FILE --platform linux/amd64,linux/arm64 .
+
+bibliogram-update-build-hash:
+  image: alpine:latest
+  needs:
+    - fetch-commit-hash
+    - bibliogram-buildx
+  stage: build-bibliogram
+  variables:
+    HASH_FILE: build-hashes/bibliogram.txt
+    APP_NAME: Bibliogram
+    REPO: https://git.sr.ht/~cadence/bibliogram
+  before_script:
+    # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
+    - |
+      if [ "$bibliogram_out_of_date" = true ]; then
+        echo "true, needs update"
+      else
+        echo "false, no need for update, no build needed" && exit 0
+      fi
+    - apk add git
+    - git remote set-url origin https://${CI_REGISTRY_USER}:${API_TOKEN}@${CI_REPOSITORY_URL#*@}
+    - git checkout testing
+    # Set the displayed user with the commits that are about to be made
+    - git config --global user.email "${GIT_USER_EMAIL:-$GITLAB_USER_EMAIL}"
+    - git config --global user.name "${GIT_USER_NAME:-$GITLAB_USER_NAME}"
+  script:
+    - git ls-remote $REPO HEAD > $HASH_FILE
+    - git pull
+    - git add $HASH_FILE
+    - git commit -m "[skip-ci] update $APP_NAME build commit"
+    - git push
+
+scribe-clone-repo:
+  stage: build-scribe
+  needs:
+    - fetch-commit-hash
+  image: alpine:latest
+  variables:
+    REPO: https://git.sr.ht/~edwardloveall/scribe
+    HASH_FILE: build-hashes/scribe.txt
+    APP_NAME: scribe
+    CLONE_REPO: "true"
+    IMAGE_NAME: fariszr/privacy-oci/scribe
+    CACHE_IMAGE: fariszr/privacy-oci/scribe-cache
+    DOCKER_FILE: Dockerfile-scribe
+  before_script:
+    # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
+    - |
+      if [ "$bibliogram_out_of_date" = true ]; then
+        echo "true, needs update"
+      else
+        echo "false, no need for update, no build needed" && exit 0
+      fi
+    - apk add git
+  script:
+    - |
+      if [ "$CLONE_REPO" = true ]; then
+        echo "CLONE_REPO = true, cloning original repo"
+        git clone $REPO $CI_PROJECT_DIR/$APP_NAME
+        cp $DOCKER_FILE $CI_PROJECT_DIR/$APP_NAME/$DOCKER_FILE
+      else
+        echo "CLONE_REPO = false, no need for the original repo"
+      fi
+# send repo file to the dependent steps(include needs to this job), https://docs.gitlab.com/ee/ci/yaml/index.html#artifacts
+  artifacts:
+    untracked: true
+    paths:
+      - scribe/
+    expire_in: "1h"
+
+
+scribe-build-kaniko:
+  # use kainkio, since its a lot faster and scribe only works on AMD64.
+  stage: build-scribe
+  needs:
+    - fetch-commit-hash
+    - scribe-clone-repo
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  variables:
+    REPO: https://git.sr.ht/~edwardloveall/scribe
+    HASH_FILE: build-hashes/scribe.txt
+    APP_NAME: scribe
+    CLONE_REPO: "true"
+    IMAGE_NAME: fariszr/privacy-oci/scribe
+    CACHE_IMAGE: fariszr/privacy-oci/scribe-cache
+    DOCKER_FILE: Dockerfile-scribe
+  before_script:
+    # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
+    - |
+      if [ "$scribe_out_of_date" = true ]; then
+        echo "true, needs update"
+      else
+        echo "false, no need for update, no build needed" && exit 0
+      fi
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  script:
+    - ls $CI_PROJECT_DIR
+    - /kaniko/executor --context "$CI_PROJECT_DIR/$APP_NAME" --dockerfile "$CI_PROJECT_DIR/$APP_NAME/$DOCKER_FILE" --destination "$CI_REGISTRY/$IMAGE_NAME:latest"
+
+scribe-update-build-hash:
+  image: alpine:latest
+  needs:
+    - fetch-commit-hash
+    - scribe-clone-repo
+    - scribe-build-kaniko
+  stage: build-scribe
+  variables:
+    REPO: https://git.sr.ht/~edwardloveall/scribe
+    HASH_FILE: build-hashes/scribe.txt
+    APP_NAME: scribe
+    CLONE_REPO: "true"
+    IMAGE_NAME: fariszr/privacy-oci/scribe
+    CACHE_IMAGE: fariszr/privacy-oci/scribe-cache
+    DOCKER_FILE: Dockerfile-scribe
+  before_script:
+    # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
+    - |
+      if [ "$scribe_out_of_date" = true ]; then
+        echo "true, needs update"
+      else
+        echo "false, no need for update, no build needed" && exit 0
+      fi
+    - apk add git
+    # use user access token with only repo write access to push, https://devops.stackexchange.com/a/14240
+    - git remote set-url origin https://${CI_REGISTRY_USER}:${API_TOKEN}@${CI_REPOSITORY_URL#*@}
+    - git checkout testing
+    # Set the displayed user with the commits that are about to be made
+    - git config --global user.email "${GIT_USER_EMAIL:-$GITLAB_USER_EMAIL}"
+    - git config --global user.name "${GIT_USER_NAME:-$GITLAB_USER_NAME}"
+  script:
+    - git ls-remote $REPO HEAD > $HASH_FILE
+    - git pull
+    - git add $HASH_FILE
+    - git commit -m "[skip-ci] update $APP_NAME build commit"
+    - git push
