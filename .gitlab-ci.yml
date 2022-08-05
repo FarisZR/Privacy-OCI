@@ -12,16 +12,24 @@
 # only trigger on Push and schedule
 workflow:
   rules:
+    - if: $CI_COMMIT_BRANCH == "$CI_DEFAULT_BRANCH"
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "push"
       changes:
-        - .gitlab-ci.yml
         - remote-check.sh
+    - if: $CI_PIPELINE_SOURCE == "push"
+      # always run on Dockerfile or CI/CD changes, reagrdless if the packages are out-of-date or not
+      changes:
+        - .gitlab-ci.yml
         - Dockerfile-bibliogram
         - Dockerfile-scribe
+      variables:
+        bibliogram_out_of_date: "true"
+        scribe_out_of_date: "true"
+    # Allow run using the Run pipeline button
+    - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_COMMIT_TITLE =~ /skip-ci$/
       when: never
-    - if: $CI_COMMIT_BRANCH == "$CI_DEFAULT_BRANCH"
 
 stages:
   - check-for-updates
@@ -29,6 +37,13 @@ stages:
   - build-scribe
 
 fetch-commit-hash:
+  rules:
+  - if: $CI_PIPELINE_SOURCE == "push"
+    # always run on Dockerfile or CI/CD changes, reagrdless if the packages are out-of-date or not
+    changes:
+      - .gitlab-ci.yml
+      - Dockerfile-bibliogram
+      - Dockerfile-scribe
   image: alpine:latest
   stage: check-for-updates
   script:
@@ -78,20 +93,20 @@ bibliogram-update-build-hash:
     REPO: https://git.sr.ht/~cadence/bibliogram
   before_script:
     # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
-    - |
-      if [ "$bibliogram_out_of_date" = true ]; then
-        echo "true, needs update"
-      else
-        echo "false, no need for update, no build needed" && exit 0
-      fi
+    # - |
+    #   if [ "$bibliogram_out_of_date" = true ]; then
+    #     echo "true, needs update"
+    #   else
+    #     echo "false, no need for update, no build needed" && exit 0
+    #   fi
     - apk add git
     - git remote set-url origin https://${CI_REGISTRY_USER}:${API_TOKEN}@${CI_REPOSITORY_URL#*@}
-    - git checkout testing
     # Set the displayed user with the commits that are about to be made
     - git config --global user.email "${GIT_USER_EMAIL:-$GITLAB_USER_EMAIL}"
     - git config --global user.name "${GIT_USER_NAME:-$GITLAB_USER_NAME}"
   script:
     - git ls-remote $REPO HEAD > $HASH_FILE
+    - git checkout main
     - git pull
     - git add $HASH_FILE
     - git commit -m "[skip-ci] update $APP_NAME build commit"
@@ -193,12 +208,12 @@ scribe-update-build-hash:
     - apk add git
     # use user access token with only repo write access to push, https://devops.stackexchange.com/a/14240
     - git remote set-url origin https://${CI_REGISTRY_USER}:${API_TOKEN}@${CI_REPOSITORY_URL#*@}
-    - git checkout testing
     # Set the displayed user with the commits that are about to be made
     - git config --global user.email "${GIT_USER_EMAIL:-$GITLAB_USER_EMAIL}"
     - git config --global user.name "${GIT_USER_NAME:-$GITLAB_USER_NAME}"
   script:
     - git ls-remote $REPO HEAD > $HASH_FILE
+    - git checkout main
     - git pull
     - git add $HASH_FILE
     - git commit -m "[skip-ci] update $APP_NAME build commit"
