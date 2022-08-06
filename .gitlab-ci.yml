@@ -111,7 +111,7 @@ bibliogram-update-build-hash:
     - git checkout main
     - git pull
     - git add $HASH_FILE
-    - git commit -m "[skip-ci] update $APP_NAME build commit"
+    - git diff-index --quiet HEAD || git commit -m "[skip-ci] update $APP_NAME build commit" # avoid error when there are no changes https://stackoverflow.com/a/8123841
     - git push
 
 scribe-build-kaniko:
@@ -173,5 +173,5 @@ scribe-update-build-hash:
     - git checkout main
     - git pull
     - git add $HASH_FILE
-    - git commit -m "[skip-ci] update $APP_NAME build commit"
+    - git diff-index --quiet HEAD || git commit -m "[skip-ci] update $APP_NAME build commit" # avoid error when there are no changes https://stackoverflow.com/a/8123841
     - git push
