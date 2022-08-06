@@ -18,13 +18,23 @@ workflow:
       changes:
         - remote-check.sh
     - if: $CI_PIPELINE_SOURCE == "push"
-      # always run on Dockerfile or CI/CD changes, reagrdless if the packages are out-of-date or not
+      # always run on CI/CD changes, reagrdless if the packages are out-of-date or not
       changes:
         - .gitlab-ci.yml
-        - Dockerfile-bibliogram
-        - Dockerfile-scribe
       variables:
         bibliogram_out_of_date: "true"
+        scribe_out_of_date: "true"
+    - if: $CI_PIPELINE_SOURCE == "push"
+      # update on Dockerfile or reagrdless if the package is out-of-date or not
+      changes:
+        - Dockerfile-bibliogram
+      variables:
+        bibliogram_out_of_date: "true"
+    - if: $CI_PIPELINE_SOURCE == "push"
+      # update on Dockerfile or reagrdless if the package is out-of-date or not
+      changes:
+        - Dockerfile-scribe
+      variables:
         scribe_out_of_date: "true"
     # Allow run using the Run pipeline button
     - if: $CI_PIPELINE_SOURCE == "web"
