@@ -66,7 +66,7 @@ bibliogram-buildx:
   stage: build-bibliogram
   variables:
     CONTEXT: .
-    IMAGE_NAME: fariszr/privacy-oci/bibliogram
+    IMAGE_NAME: fariszr/bibliogram
     CACHE_IMAGE: fariszr/privacy-oci/bibliogram-cache
     DOCKER_FILE: Dockerfile-bibliogram
   before_script:
@@ -78,7 +78,7 @@ bibliogram-buildx:
         echo "false, no need for update, no build needed" && exit 0
       fi
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-    - docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD" docker.io
+    - docker login -u "$DOCKER_USER" -p "$DOCKER_PASS" docker.io
   script:
     - docker buildx create --use
     - docker buildx build --push --pull -t docker.io/$IMAGE_NAME:latest --cache-from $CI_REGISTRY/$CACHE_IMAGE:latest --cache-to $CI_REGISTRY/$CACHE_IMAGE:latest --file $DOCKER_FILE --platform linux/amd64,linux/arm64,linux/arm/v7 .
