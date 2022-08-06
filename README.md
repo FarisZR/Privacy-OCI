@@ -6,6 +6,39 @@ I use a Scheduled GitLab CI pipeline to check for updates, and if there any new 
 Currently Bibliogram is built AMD64, and ARM64.
 while scribe is only for AMD64, as nim lang image and their entire tooling stack needs to be rebuilt to support ARM.
 
+## Docker Compose
+```
+version: '3.3'
+
+services:
+  srcibe:
+    container_name: scribe
+    image: fariszr/scribe:latest
+    restart: always
+    ports:
+      - 127.0.0.1:8080:8080 #remember to always use a reverse proxy!
+    environment:
+      - APP_DOMAIN=scribe.example.com
+      - LUCKY_ENV=production
+      - PORT=8080 #SCRIBE_PORT doesn't do anything
+      - SECRET_KEY_BASE=xxxx # lucky gen.secret_key
+      - GITHUB_USERNAME=xxx # optional, only if you want to proxy gists
+      - GITHUB_PERSONAL_ACCESS_TOKEN=xxx # optional, only if you want to proxy gists
+
+  bibliogram:
+    image: fariszr/bibliogram:latest
+    container_name: bibligoram
+    restart: always
+    ports:
+      - 127.0.0.1:10407:10407 #remember to always use a reverse proxy!
+    volumes:
+      - ./bibliogram/config.js:/config/config.js:ro
+```
+
+## Image URLS
+images are on Docker hub
+https://hub.docker.com/r/fariszr/bibliogram
+https://hub.docker.com/r/fariszr/scribe
 ## General GitLab CI notes
 
 i need to use buildx to build multi-arch images,
