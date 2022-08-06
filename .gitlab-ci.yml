@@ -113,59 +113,18 @@ bibliogram-update-build-hash:
     - git commit -m "[skip-ci] update $APP_NAME build commit"
     - git push
 
-scribe-clone-repo:
-  stage: build-scribe
-  needs:
-    - fetch-commit-hash
-  image: alpine:latest
-  variables:
-    REPO: https://git.sr.ht/~edwardloveall/scribe
-    HASH_FILE: build-hashes/scribe.txt
-    APP_NAME: scribe
-    CLONE_REPO: "true"
-    IMAGE_NAME: fariszr/privacy-oci/scribe
-    CACHE_IMAGE: fariszr/privacy-oci/scribe-cache
-    DOCKER_FILE: Dockerfile-scribe
-  before_script:
-    # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
-    - |
-      if [ "$scribe_out_of_date" = true ]; then
-        echo "true, needs update"
-      else
-        echo "false, no need for update, no build needed" && exit 0
-      fi
-    - apk add git
-  script:
-    - |
-      if [ "$CLONE_REPO" = true ]; then
-        echo "CLONE_REPO = true, cloning original repo"
-        git clone $REPO $CI_PROJECT_DIR/$APP_NAME
-        cp $DOCKER_FILE $CI_PROJECT_DIR/$APP_NAME/$DOCKER_FILE
-      else
-        echo "CLONE_REPO = false, no need for the original repo"
-      fi
-# send repo file to the dependent steps(include needs to this job), https://docs.gitlab.com/ee/ci/yaml/index.html#artifacts
-  artifacts:
-    untracked: true
-    paths:
-      - scribe/
-    expire_in: "1h"
-
-
 scribe-build-kaniko:
   # use kainkio, since its a lot faster and scribe only works on AMD64.
   stage: build-scribe
   needs:
     - fetch-commit-hash
-    - scribe-clone-repo
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
   variables:
-    REPO: https://git.sr.ht/~edwardloveall/scribe
+    REPO: git://git.sr.ht/~edwardloveall/scribe
     HASH_FILE: build-hashes/scribe.txt
     APP_NAME: scribe
-    CLONE_REPO: "true"
     IMAGE_NAME: fariszr/privacy-oci/scribe
     CACHE_IMAGE: fariszr/privacy-oci/scribe-cache
     DOCKER_FILE: Dockerfile-scribe
@@ -181,20 +140,18 @@ scribe-build-kaniko:
     - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
   script:
     - ls $CI_PROJECT_DIR
-    - /kaniko/executor --context "$CI_PROJECT_DIR/$APP_NAME" --dockerfile "$CI_PROJECT_DIR/$APP_NAME/$DOCKER_FILE" --destination "$CI_REGISTRY/$IMAGE_NAME:latest"
+    - /kaniko/executor --context "$REPO" --dockerfile "$CI_PROJECT_DIR/$DOCKER_FILE" --destination "$CI_REGISTRY/$IMAGE_NAME:latest"
 
 scribe-update-build-hash:
   image: alpine:latest
   needs:
     - fetch-commit-hash
-    - scribe-clone-repo
     - scribe-build-kaniko
   stage: build-scribe
   variables:
     REPO: https://git.sr.ht/~edwardloveall/scribe
     HASH_FILE: build-hashes/scribe.txt
     APP_NAME: scribe
-    CLONE_REPO: "true"
     IMAGE_NAME: fariszr/privacy-oci/scribe
     CACHE_IMAGE: fariszr/privacy-oci/scribe-cache
     DOCKER_FILE: Dockerfile-scribe
