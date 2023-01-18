@@ -1,0 +1,27 @@
+FROM node:lts-alpine AS builder
+
+ENV NODE_ENV=production
+WORKDIR /app
+
+RUN apk add --no-cache git
+RUN wget "https://github.com/pnpm/pnpm/releases/latest/download/pnpm-linuxstatic-x64" -O /bin/pnpm && chmod +x /bin/pnpm
+
+RUN git clone --depth 1 https://github.com/zyachel/quetre.git . && rm -rf .git .github *.md .gitignore .eslintrc.json quetre.service && mv .env.example .env
+RUN pnpm install
+RUN pnpm run sass:build
+
+FROM node:lts-alpine
+
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=builder /app /app
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
+
+# labels according to https://github.com/opencontainers/image-spec/blob/main/annotations.md
+LABEL org.opencontainers.image.url https://gitlab.com/FarisZR/Privacy-OCI
+LABEL org.opencontainers.image.licenses AGPL-3.0
+LABEL org.opencontainers.image.title Quetre
+LABEL org.opencontainers.image.description "Automatically built Docker image for Quetre, an alternative front-end to Quora"

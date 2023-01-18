@@ -22,14 +22,14 @@ workflow:
       changes:
         - .gitlab-ci.yml
       variables:
-        bibliogram_out_of_date: "true"
+        quetre_out_of_date: "true"
         scribe_out_of_date: "true"
     - if: $CI_PIPELINE_SOURCE == "push"
       # update on Dockerfile or reagrdless if the package is out-of-date or not
       changes:
-        - Dockerfile-bibliogram
+        - Dockerfile-quetre
       variables:
-        bibliogram_out_of_date: "true"
+        quetre_out_of_date: "true"
     - if: $CI_PIPELINE_SOURCE == "push"
       # update on Dockerfile or reagrdless if the package is out-of-date or not
       changes:
@@ -43,7 +43,7 @@ workflow:
 
 stages:
   - check-for-updates
-  - build-bibliogram
+  - build-quetre
   - build-scribe
 
 fetch-commit-hash:
@@ -52,14 +52,14 @@ fetch-commit-hash:
   # don't run when variables are already set.
   before_script:
     - |
-      if [ "$bibliogram_out_of_date" = true ]; then
+      if [ "$quetre_out_of_date" = true ]; then
         echo "Variable already set, won't run checks" && exit 0
       else
         echo "Variable isn't set, continue with checks"
       fi
   script:
     - apk add git
-    - sh remote-check.sh https://git.sr.ht/~cadence/bibliogram bibliogram-local.txt build-hashes/bibliogram.txt bibliogram_out_of_date
+    - sh remote-check.sh https://github.com/zyachel/quetre quetre-local.txt build-hashes/quetre.txt quetre_out_of_date
     - sh remote-check.sh https://git.sr.ht/~edwardloveall/scribe scribe-local.txt build-hashes/scribe.txt scribe_out_of_date
     - cat check.env
   # pass environment variable file to other dependent jobs, https://docs.gitlab.com/ee/ci/variables/#pass-an-environment-variable-to-another-job
@@ -67,22 +67,22 @@ fetch-commit-hash:
     reports:
       dotenv: check.env
 
-bibliogram-buildx:
+quetre-buildx:
   image: jdrouet/docker-with-buildx:stable
   needs:
     - fetch-commit-hash
   services:
     - docker:dind
-  stage: build-bibliogram
+  stage: build-quetre
   variables:
     CONTEXT: .
-    IMAGE_NAME: fariszr/bibliogram
-    CACHE_IMAGE: fariszr/privacy-oci/bibliogram-cache
-    DOCKER_FILE: Dockerfile-bibliogram
+    IMAGE_NAME: fariszr/quetre
+    CACHE_IMAGE: fariszr/privacy-oci/quetre-cache
+    DOCKER_FILE: Dockerfile-quetre
   before_script:
     # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
     - |
-      if [ "$bibliogram_out_of_date" = true ]; then
+      if [ "$quetre_out_of_date" = true ]; then
         echo "true, needs update"
       else
         echo "false, no need for update, no build needed" && exit 0
@@ -93,20 +93,20 @@ bibliogram-buildx:
     - docker buildx create --use
     - docker buildx build --push --pull -t docker.io/$IMAGE_NAME:latest --cache-from $CI_REGISTRY/$CACHE_IMAGE:latest --cache-to $CI_REGISTRY/$CACHE_IMAGE:latest --file $DOCKER_FILE --platform linux/amd64,linux/arm64,linux/arm/v7 .
 
-bibliogram-update-build-hash:
+quetre-update-build-hash:
   image: alpine:latest
   needs:
     - fetch-commit-hash
-    - bibliogram-buildx
-  stage: build-bibliogram
+    - quetre-buildx
+  stage: build-quetre
   variables:
-    HASH_FILE: build-hashes/bibliogram.txt
-    APP_NAME: Bibliogram
-    REPO: https://git.sr.ht/~cadence/bibliogram
+    HASH_FILE: build-hashes/quetre.txt
+    APP_NAME: quetre
+    REPO: https://github.com/zyachel/quetre
   before_script:
     # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
     - |
-      if [ "$bibliogram_out_of_date" = true ]; then
+      if [ "$quetre_out_of_date" = true ]; then
         echo "true, needs update"
       else
         echo "false, no need for update, no build needed" && exit 0
