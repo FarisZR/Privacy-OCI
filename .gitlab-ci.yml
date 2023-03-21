@@ -89,9 +89,10 @@ quetre-buildx:
       fi
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
     - docker login -u "$DOCKER_USER" -p "$DOCKER_PASS" docker.io
+    - docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
   script:
     - docker buildx create --use
-    - docker buildx build --push --pull -t docker.io/$IMAGE_NAME:latest --cache-from $CI_REGISTRY/$CACHE_IMAGE:latest --cache-to $CI_REGISTRY/$CACHE_IMAGE:latest --file $DOCKER_FILE --platform linux/amd64,linux/arm64,linux/arm/v7 .
+    - docker buildx build --push --pull -t docker.io/$IMAGE_NAME:latest -t quay.io/$IMAGE_NAME:latest --cache-from $CI_REGISTRY/$CACHE_IMAGE:latest --cache-to $CI_REGISTRY/$CACHE_IMAGE:latest --file $DOCKER_FILE --platform linux/amd64,linux/arm64,linux/arm/v7 .
 
 quetre-update-build-hash:
   image: alpine:latest
@@ -124,19 +125,17 @@ quetre-update-build-hash:
     - git diff-index --quiet HEAD || git commit -m "[skip-ci] update $APP_NAME build commit" # avoid error when there are no changes https://stackoverflow.com/a/8123841
     - git push
 
-scribe-build-kaniko:
-  # use kainkio, since its a lot faster and scribe only works on AMD64.
-  stage: build-scribe
+scribe-buildx:
+  image: jdrouet/docker-with-buildx:stable
   needs:
     - fetch-commit-hash
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
+  services:
+    - docker:dind
+  stage: build-scribe
   variables:
-    REPO: git://git.sr.ht/~edwardloveall/scribe
-    HASH_FILE: build-hashes/scribe.txt
-    APP_NAME: scribe
+    CONTEXT: .
     IMAGE_NAME: fariszr/scribe
+    CACHE_IMAGE: fariszr/privacy-oci/scribe-cache
     DOCKER_FILE: Dockerfile-scribe
   before_script:
     # workaround for https://gitlab.com/gitlab-org/gitlab/-/issues/235812, you can't use Shell variables in rules.
@@ -146,16 +145,19 @@ scribe-build-kaniko:
       else
         echo "false, no need for update, no build needed" && exit 0
       fi
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf "%s:%s" "${DOCKER_USER}" "${DOCKER_PASS}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - docker login -u "$DOCKER_USER" -p "$DOCKER_PASS" docker.io
+    - docker login -u "$QUAY_USER" -p "$QUAY_PASS" quay.io
   script:
-    - /kaniko/executor --context "$REPO" --dockerfile "$CI_PROJECT_DIR/$DOCKER_FILE" --destination "docker.io/$IMAGE_NAME:latest"
-
+    - apk add git --no-cache
+    - git clone https://git.sr.ht/~edwardloveall/scribe ./scribe
+    - docker buildx create --use
+    - docker buildx build --push --pull -t docker.io/$IMAGE_NAME:latest -t quay.io/$IMAGE_NAME:latest --cache-from $CI_REGISTRY/$CACHE_IMAGE:latest --cache-to $CI_REGISTRY/$CACHE_IMAGE:latest --file $DOCKER_FILE --platform linux/amd64 ./scribe
 scribe-update-build-hash:
   image: alpine:latest
   needs:
     - fetch-commit-hash
-    - scribe-build-kaniko
+    - scribe-buildx
   stage: build-scribe
   variables:
     REPO: https://git.sr.ht/~edwardloveall/scribe
