@@ -5,7 +5,7 @@ Automatically built container images for privacy services like Quetre and scribe
 
 I use a Scheduled GitLab CI pipeline to check for updates, and if there are any new commits, it will start building images.
 
-Quetre is built for X86-64, ARMv8, but scribe is only for AMD64, as nim lang image and their entire tooling stack needs to be rebuilt to support ARM.
+Quetre is built for X86-64, ARMv8, however scribe, breezewiki and bibliogram are only built for AMD64, as language images and their tooling stack needs to be rebuilt to support ARM.
 
 ## Docker Compose
 ```
@@ -14,7 +14,7 @@ version: '3.3'
 services:
   srcibe:
     container_name: scribe
-    image: fariszr/scribe:latest
+    image: oci.fariszr.com/fariszr/quetre:latest
     restart: always
     ports:
       - 127.0.0.1:8080:8080 #remember to always use a reverse proxy!
@@ -27,13 +27,23 @@ services:
       - GITHUB_PERSONAL_ACCESS_TOKEN=xxx # optional, only if you want to proxy gists
 
   quetre:
-    image: fariszr/quetre:latest
+    image: oci.fariszr.com/fariszr/quetre:latest
     container_name: quetre
     restart: always
     ports:
       - 127.0.0.1:3000:3000 #remember to always use a reverse proxy!
     # volumes:
     #  - ./quetre/.env:/app/.env:ro #optional
+
+services:
+  breezewiki:
+    container_name: breezewiki
+    image: oci.fariszr.com/fariszr/breezewiki:latest
+    restart: always
+    environment:
+      - bw_canonical_origin=breezewiki.aosus.link
+      - bw_feature_search_suggestions=true
+      - bw_port=8000
 
   # Deprecated
   bibliogram:
