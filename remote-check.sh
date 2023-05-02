@@ -8,5 +8,5 @@ remote="$3"
 if cmp -s "$local" "$remote"; then
     echo "::set-output name=$4::false"
 else
-    echo "::set-output name=$4::true"
+    echo "{$4}={true}" >> $GITHUB_OUTPUT
 fi
