@@ -62,341 +62,65 @@ jobs:
   build-quetre:
     needs: check-for-updates
     if: ${{ needs.check-for-updates.outputs.quetre == 'true' }}
-    runs-on: ubuntu-latest
-    env:
-      CONTEXT: .
-      LICENSE: AGPL-3.0
-      CLONE_REPO: ${{ false }}
-      IMAGE_NAME: fariszr/quetre
-      DOCKER_FILE: Dockerfile-quetre
-      HASH_FILE: build-hashes/quetre.txt
-      APP_NAME: quetre
-      REPO: https://github.com/zyachel/quetre
+    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+    secrets: inherit
+    with:
+      image_name: fariszr/quetre
+      dockerfile: Dockerfile-quetre
+      context: .
+      license: AGPL-3.0
+      clone_repo: ${{ false }}
+      hash_file: build-hashes/quetre.txt
+      app_name: quetre
+      repo: https://github.com/zyachel/quetre
+      build_arch: linux/amd64,linux/arm64,linux/arm/v7
     permissions:
       contents: write
       packages: write
       # This is used to complete the identity challenge
       # with sigstore/fulcio when running outside of PRs.
       id-token: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@master
-        with:
-          platforms: all
-
-      # Workaround: https://github.com/docker/build-push-action/issues/461
-      - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@v2
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry docker.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
-      - name: Log into registry quay.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_PASS }}
-
-      - name: Log into registry ghcr.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: |
-            ghcr.io/${{ env.IMAGE_NAME }}
-            quay.io/${{ env.IMAGE_NAME }}
-            docker.io/${{ env.IMAGE_NAME }}
-          labels: |
-            org.opencontainers.image.licenses=${{ env.LICENSE }}
-            org.opencontainers.image.title=${{ env.APP_NAME }}
-
-      - name: Clone git repo for docker context
-        if: env.CLONE_REPO == 'true'
-        run: |
-          git clone ${{ env.REPO }} ${{ env.CONTEXT }}
-          cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v3
-        with:
-          context: ${{ env.CONTEXT }}
-          file: ${{ env.DOCKER_FILE }}
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            quay.io/${{ env.IMAGE_NAME }}:latest
-            ghcr.io/${{ env.IMAGE_NAME }}:latest
-            docker.io/${{ env.IMAGE_NAME }}:latest
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Update build commit
-        run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
-
-      - name: Commit
-        run: |
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git pull
-          git add ${{ env.HASH_FILE }}
-          git commit -m "update ${{ env.APP_NAME }} build commit"
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
 
   build-scribe:
     needs: check-for-updates
-    if: ${{ needs.check-for-updates.outputs.scribe == 'true' }}
-    runs-on: ubuntu-latest
-    env:
-      CLONE_REPO: ${{ true }}
-      LICENSE: AGPL-3.0
-      IMAGE_NAME: fariszr/scribe
-      DOCKER_FILE: Dockerfile-scribe
-      HASH_FILE: build-hashes/scribe.txt
-      APP_NAME: scribe
-      REPO: https://git.sr.ht/~edwardloveall/scribe
-      CONTEXT: ./scribe
+    if: ${{ needs.check-for-updates.outputs.quetre == 'true' }}
+    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+    secrets: inherit
+    with:
+      image_name: fariszr/scribe
+      dockerfile: Dockerfile-scribe
+      context: ./scribe
+      license: AGPL-3.0
+      clone_repo: ${{ true }}
+      hash_file: build-hashes/scribe.txt
+      app_name: quetre
+      repo: https://git.sr.ht/~edwardloveall/scribe
+      build_arch: linux/amd64,linux/arm64
     permissions:
       contents: write
       packages: write
       # This is used to complete the identity challenge
       # with sigstore/fulcio when running outside of PRs.
       id-token: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@master
-        with:
-          platforms: all
-
-      # Workaround: https://github.com/docker/build-push-action/issues/461
-      - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@v2
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry docker.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
-      - name: Log into registry quay.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_PASS }}
-
-      - name: Log into registry ghcr.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: |
-            ghcr.io/${{ env.IMAGE_NAME }}
-            quay.io/${{ env.IMAGE_NAME }}
-            docker.io/${{ env.IMAGE_NAME }}
-          labels: |
-            org.opencontainers.image.licenses=${{ env.LICENSE }}
-            org.opencontainers.image.title=${{ env.APP_NAME }}
-
-      - name: Clone git repo for docker context
-        if: env.CLONE_REPO == 'true'
-        run: |
-          git clone ${{ env.REPO }} ${{ env.CONTEXT }}
-          cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v3
-        with:
-          context: ${{ env.CONTEXT }}
-          file: ${{ env.DOCKER_FILE }}
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            quay.io/${{ env.IMAGE_NAME }}:latest
-            ghcr.io/${{ env.IMAGE_NAME }}:latest
-            docker.io/${{ env.IMAGE_NAME }}:latest
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Update build commit
-        run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
-
-      - name: Commit
-        run: |
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git pull
-          git add ${{ env.HASH_FILE }}
-          git commit -m "update ${{ env.APP_NAME }} build commit"
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
 
   build-breezewiki:
     needs: check-for-updates
-    if: ${{ needs.check-for-updates.outputs.breezewiki == 'true' }}
-    runs-on: ubuntu-latest
-    env:
-      CONTEXT: ./breezewiki
-      LICENSE: AGPL-3.0
-      CLONE_REPO: ${{ true }}
-      IMAGE_NAME: fariszr/breezewiki
-      DOCKER_FILE: Dockerfile-breezewiki
-      HASH_FILE: build-hashes/breezewiki.txt
-      APP_NAME: breezewiki
-      REPO: https://gitdab.com/cadence/breezewiki
+    if: ${{ needs.check-for-updates.outputs.quetre == 'true' }}
+    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+    secrets: inherit
+    with:
+      image_name: fariszr/breezewiki
+      dockerfile: Dockerfile-breezewiki
+      context: ./breezewiki
+      license: AGPL-3.0
+      clone_repo: ${{ true }}
+      hash_file: build-hashes/breezewiki.txt
+      app_name: quetre
+      repo: https://gitdab.com/cadence/breezewiki
+      build_arch: linux/amd64
     permissions:
       contents: write
       packages: write
       # This is used to complete the identity challenge
       # with sigstore/fulcio when running outside of PRs.
       id-token: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@master
-        with:
-          platforms: all
-
-      # Workaround: https://github.com/docker/build-push-action/issues/461
-      - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@v2
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry docker.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
-      - name: Log into registry quay.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_PASS }}
-
-      - name: Log into registry ghcr.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: |
-            ghcr.io/${{ env.IMAGE_NAME }}
-            quay.io/${{ env.IMAGE_NAME }}
-            docker.io/${{ env.IMAGE_NAME }}
-          labels: |
-            org.opencontainers.image.licenses=${{ env.LICENSE }}
-            org.opencontainers.image.title=${{ env.APP_NAME }}
-
-      - name: Clone git repo for docker context
-        if: env.CLONE_REPO == 'true'
-        run: |
-          git clone ${{ env.REPO }} ${{ env.CONTEXT }}
-          cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v3
-        with:
-          context: ${{ env.CONTEXT }}
-          file: ${{ env.DOCKER_FILE }}
-          platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            quay.io/${{ env.IMAGE_NAME }}:latest
-            ghcr.io/${{ env.IMAGE_NAME }}:latest
-            docker.io/${{ env.IMAGE_NAME }}:latest
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Update build commit
-        run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
-
-      - name: Commit
-        run: |
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git pull
-          git add ${{ env.HASH_FILE }}
-          git commit -m "update ${{ env.APP_NAME }} build commit"
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}

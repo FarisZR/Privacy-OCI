@@ -1,0 +1,151 @@
+name: build docker image and update build hash
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        required: true
+        type: string
+      dockerfile:
+        required: true
+        type: string
+      license:
+        required: true
+        type: string
+      clone_repo:
+        required: true
+        type: boolean
+      hash_file:
+        required: true
+        type: string
+      app_name:
+        required: true
+        type: string
+      repo:
+        required: true
+        type: string
+      build_arch:
+        required: true
+        type: string
+      context:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+  # This is used to complete the identity challenge
+  # with sigstore/fulcio when running outside of PRs.
+  id-token: write
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    env:
+      CONTEXT: ${{ inputs.context }}
+      LICENSE: ${{ inputs.license }}
+      CLONE_REPO: ${{ inputs.clone_repo }}
+      IMAGE_NAME: ${{ inputs.image_name }}
+      DOCKER_FILE: ${{ inputs.dockerfile }}
+      HASH_FILE: ${{ inputs.hash_file }}
+      APP_NAME: ${{ inputs.app_name }}
+      REPO: ${{ inputs.repo }}
+      build_arch: ${{ inputs.build_arch }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: all
+
+      # Workaround: https://github.com/docker/build-push-action/issues/461
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry docker.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Log into registry quay.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USER }}
+          password: ${{ secrets.QUAY_PASS }}
+
+      - name: Log into registry ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ghcr.io/${{ env.IMAGE_NAME }}
+            quay.io/${{ env.IMAGE_NAME }}
+            docker.io/${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.licenses=${{ env.LICENSE }}
+            org.opencontainers.image.title=${{ env.APP_NAME }}
+
+      - name: Clone git repo for docker context
+        if: env.CLONE_REPO == 'true'
+        run: |
+          git clone ${{ env.REPO }} ${{ env.CONTEXT }}
+          cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ env.CONTEXT }}
+          file: ${{ env.DOCKER_FILE }}
+          platforms: ${{ env.build_arch }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            quay.io/${{ env.IMAGE_NAME }}:latest
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            docker.io/${{ env.IMAGE_NAME }}:latest
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  update-build-commit:
+    runs-on: ubuntu-latest
+    needs: build-image
+    env:
+      HASH_FILE: ${{ inputs.hash_file }}
+      REPO: ${{ inputs.repo }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: fetch latest commits
+      run: git pull
+
+    - name: Update build commit
+      run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
+
+    - name: commit and push hash update
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        file_pattern: ${{ inputs.hash_file }}
+        commit_message: update ${{ inputs.app_name }} build commit
