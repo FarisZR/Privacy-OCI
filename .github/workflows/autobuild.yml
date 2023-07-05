@@ -8,6 +8,12 @@ name: Check for updates and build
 on:
   # Possibility to run it manually
   workflow_dispatch:
+    inputs:
+      trigger_all_builds:
+        description: build all images
+        default: false
+        type: boolean
+        required: true
   push:
     paths:
       - ".github/workflows/autobuild.yaml"
@@ -24,23 +30,32 @@ jobs:
   check-for-updates:
     runs-on: ubuntu-latest
     outputs:
-      quetre: ${{ steps.quetre.outputs.quetre-out-of-date }}
-      scribe: ${{ steps.scribe.outputs.scribe-out-of-date }}
-      breezewiki: ${{ steps.breezewiki.outputs.breezewiki-out-of-date }}
+      quetre: ${{ steps.quetre.outputs.quetre-out-of-date || steps.trigger-all.outputs.build-all }}
+      scribe: ${{ steps.scribe.outputs.scribe-out-of-date || steps.trigger-all.outputs.build-all }}
+      breezewiki: ${{ steps.breezewiki.outputs.breezewiki-out-of-date || steps.trigger-all.outputs.build-all }}
     # clone repo
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: trigger all builds if requested
+        if: ${{ github.event.inputs.trigger_all_builds == 'true' }}
+        id: trigger-all
+        run: |
+          echo "build-all=true" >> $GITHUB_OUTPUT
+
       - name: Pull quetre remote commits
+        if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
         id: quetre
         run: sh remote-check.sh https://github.com/zyachel/quetre quetre-local.txt build-hashes/quetre.txt quetre-out-of-date
 
       - name: Pull Scribe remote commits
+        if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
         id: scribe
         run: sh remote-check.sh https://git.sr.ht/~edwardloveall/scribe scribe-local.txt build-hashes/scribe.txt scribe-out-of-date
 
       - name: Pull Breezewiki remote commits
+        if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
         id: breezewiki
         run: sh remote-check.sh https://gitdab.com/cadence/breezewiki breezewiki-local.txt build-hashes/breezewiki.txt breezewiki-out-of-date
 
