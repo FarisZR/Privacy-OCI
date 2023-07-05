@@ -1,11 +1,28 @@
 # Privacy-OCI
-Automatically built container images for privacy services like Quetre and scribe.
+Automatically built container images for alternative frontends Quetre, scribe and Breezewiki
 
 **Bibliogram is Deprecated and no longer supported by the developer**
 
-I use a Scheduled GitLab CI pipeline to check for updates, and if there are any new commits, it will start building images.
+A Github action runs every hour to check for updates, and if there are any new commits, it will start building images.
 
-Quetre is built for X86-64, ARMv8, however scribe, breezewiki and bibliogram are only built for AMD64, as language images and their tooling stack needs to be rebuilt to support ARM.
+## Supported architectures
+
+### Breezewiki && Bibliogram
+- AMD64
+
+### Scribe
+- AMD64
+- ARM64
+
+### Quetre
+- AMD64
+- ARM64
+- ARMv7
+
+## Registries 
+- `oci.fariszr.com` (Recommended, it's a redirect to [Quay.io](https://quay.io), and in the case of a new [rug pull](https://httptoolkit.com/blog/docker-image-registry-facade/), I can move to another host without changing the URL)
+- GitHub packages (ghcr.io/FarisZR/)
+- [docker hub](https://hub.docker.com/r/fariszr/)
 
 ## Docker Compose
 ```
@@ -56,13 +73,10 @@ services:
       - ./bibliogram/config.js:/config/config.js:ro
 ```
 
-## Image URLS
-images are on Docker hub
-https://hub.docker.com/r/fariszr/bibliogram (Deprecated)
-https://hub.docker.com/r/fariszr/scribe (X86-64 only)
-https://hub.docker.com/r/fariszr/quetre
+## Credits
+thanks [Video-prize-ranch](https://codeberg.org/video-prize-ranch) for Quetre's [Dockerfile](https://codeberg.org/video-prize-ranch/images/src/commit/f3b17cb5925d50083b6321a3cf47c6520a1174d0/quetre/Dockerfile)
 
-## General GitLab CI notes
+## General GitLab CI notes (outdated)
 
 I need to use buildx to build multi-arch images,
 more details from docker here
@@ -110,7 +124,3 @@ I used the structure used here
 https://devops.stackexchange.com/a/14240
 
 and created an access token which only has write access to my repos, Per project access tokens seem to be a premium feature.
-
-
-## Credit
-thanks [Video-prize-ranch](https://codeberg.org/video-prize-ranch) for Quetre's [Dockerfile](https://codeberg.org/video-prize-ranch/images/src/commit/f3b17cb5925d50083b6321a3cf47c6520a1174d0/quetre/Dockerfile)
