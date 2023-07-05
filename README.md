@@ -25,53 +25,7 @@ A Github action runs every hour to check for updates, and if there are any new c
 - [docker hub](https://hub.docker.com/r/fariszr/)
 
 ## Docker Compose
-```
-version: '3.3'
-
-services:
-  srcibe:
-    container_name: scribe
-    image: oci.fariszr.com/fariszr/quetre:latest
-    restart: always
-    ports:
-      - 127.0.0.1:8080:8080 #remember to always use a reverse proxy!
-    environment:
-      - APP_DOMAIN=scribe.example.com
-      - LUCKY_ENV=production
-      - PORT=8080 #SCRIBE_PORT doesn't do anything
-      - SECRET_KEY_BASE=xxxx # lucky gen.secret_key
-      - GITHUB_USERNAME=xxx # optional, only if you want to proxy gists
-      - GITHUB_PERSONAL_ACCESS_TOKEN=xxx # optional, only if you want to proxy gists
-
-  quetre:
-    image: oci.fariszr.com/fariszr/quetre:latest
-    container_name: quetre
-    restart: always
-    ports:
-      - 127.0.0.1:3000:3000 #remember to always use a reverse proxy!
-    # volumes:
-    #  - ./quetre/.env:/app/.env:ro #optional
-
-services:
-  breezewiki:
-    container_name: breezewiki
-    image: oci.fariszr.com/fariszr/breezewiki:latest
-    restart: always
-    environment:
-      - bw_canonical_origin=breezewiki.aosus.link
-      - bw_feature_search_suggestions=true
-      - bw_port=8000
-
-  # Deprecated
-  bibliogram:
-    image: fariszr/bibliogram:latest
-    container_name: bibliogram
-    restart: always
-    ports:
-      - 127.0.0.1:10407:10407 #remember to always use a reverse proxy!
-    volumes:
-      - ./bibliogram/config.js:/config/config.js:ro
-```
+[Here](docker-compose.yml)
 
 ## Credits
 thanks [Video-prize-ranch](https://codeberg.org/video-prize-ranch) for Quetre's [Dockerfile](https://codeberg.org/video-prize-ranch/images/src/commit/f3b17cb5925d50083b6321a3cf47c6520a1174d0/quetre/Dockerfile)
