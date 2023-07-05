@@ -41,7 +41,7 @@ USER lucky
 CMD ["/home/lucky/app/docker_entrypoint"]
 
 # labels according to https://github.com/opencontainers/image-spec/blob/main/annotations.md
-LABEL org.opencontainers.image.url https://gitlab.com/FarisZR/Privacy-OCI
+LABEL org.opencontainers.image.url https://github.com/FarisZR/Privacy-OCI
 LABEL org.opencontainers.image.licenses AGPL-3.0
 LABEL org.opencontainers.image.title Scribe
 LABEL org.opencontainers.image.description "Auto updated Container for Scribe, A privacy proxy for Medium.com and Github gists"

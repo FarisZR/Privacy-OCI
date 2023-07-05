@@ -21,7 +21,7 @@ EXPOSE 3000
 CMD ["node", "server.js"]
 
 # labels according to https://github.com/opencontainers/image-spec/blob/main/annotations.md
-LABEL org.opencontainers.image.url https://gitlab.com/FarisZR/Privacy-OCI
+LABEL org.opencontainers.image.url https://github.com/FarisZR/Privacy-OCI
 LABEL org.opencontainers.image.licenses AGPL-3.0
 LABEL org.opencontainers.image.title Quetre
 LABEL org.opencontainers.image.description "Automatically built Docker image for Quetre, an alternative front-end to Quora"
