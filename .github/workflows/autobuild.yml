@@ -30,7 +30,7 @@ jobs:
   check-for-updates:
     runs-on: ubuntu-latest
     outputs:
-      quetre: ${{ steps.quetre.outputs.quetre-out-of-date || steps.trigger-all.outputs.build-all }}
+      # quetre: ${{ steps.quetre.outputs.quetre-out-of-date || steps.trigger-all.outputs.build-all }}
       scribe: ${{ steps.scribe.outputs.scribe-out-of-date || steps.trigger-all.outputs.build-all }}
       breezewiki: ${{ steps.breezewiki.outputs.breezewiki-out-of-date || steps.trigger-all.outputs.build-all }}
     # clone repo
@@ -44,10 +44,10 @@ jobs:
         run: |
           echo "build-all=true" >> $GITHUB_OUTPUT
 
-      - name: Pull quetre remote commits
-        if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
-        id: quetre
-        run: sh remote-check.sh https://github.com/zyachel/quetre quetre-local.txt build-hashes/quetre.txt quetre-out-of-date
+      # - name: Pull quetre remote commits
+      #   if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
+      #   id: quetre
+      #   run: sh remote-check.sh https://github.com/zyachel/quetre quetre-local.txt build-hashes/quetre.txt quetre-out-of-date
 
       - name: Pull Scribe remote commits
         if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
@@ -59,27 +59,27 @@ jobs:
         id: breezewiki
         run: sh remote-check.sh https://gitdab.com/cadence/breezewiki breezewiki-local.txt build-hashes/breezewiki.txt breezewiki-out-of-date
 
-  build-quetre:
-    needs: check-for-updates
-    if: ${{ needs.check-for-updates.outputs.quetre == 'true' }}
-    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
-    secrets: inherit
-    with:
-      image_name: fariszr/quetre
-      dockerfile: Dockerfile-quetre
-      context: .
-      license: AGPL-3.0
-      clone_repo: ${{ false }}
-      hash_file: build-hashes/quetre.txt
-      app_name: quetre
-      repo: https://github.com/zyachel/quetre
-      build_arch: linux/amd64,linux/arm64,linux/arm/v7
-    permissions:
-      contents: write
-      packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
-      id-token: write
+  # build-quetre:
+  #   needs: check-for-updates
+  #   if: ${{ needs.check-for-updates.outputs.quetre == 'true' }}
+  #   uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+  #   secrets: inherit
+  #   with:
+  #     image_name: fariszr/quetre
+  #     dockerfile: Dockerfile-quetre
+  #     context: .
+  #     license: AGPL-3.0
+  #     clone_repo: ${{ false }}
+  #     hash_file: build-hashes/quetre.txt
+  #     app_name: quetre
+  #     repo: https://github.com/zyachel/quetre
+  #     build_arch: linux/amd64,linux/arm64,linux/arm/v7
+  #   permissions:
+  #     contents: write
+  #     packages: write
+  #     # This is used to complete the identity challenge
+  #     # with sigstore/fulcio when running outside of PRs.
+  #     id-token: write
 
   build-scribe:
     needs: check-for-updates
