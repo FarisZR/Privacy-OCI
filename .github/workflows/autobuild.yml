@@ -105,7 +105,7 @@ jobs:
 
   build-breezewiki:
     needs: check-for-updates
-    if: ${{ needs.check-for-updates.outputs.quetre == 'true' }}
+    if: ${{ needs.check-for-updates.outputs.breezewiki == 'true' }}
     uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
     secrets: inherit
     with:
@@ -115,7 +115,7 @@ jobs:
       license: AGPL-3.0
       clone_repo: ${{ true }}
       hash_file: build-hashes/breezewiki.txt
-      app_name: quetre
+      app_name: breezewiki
       repo: https://gitdab.com/cadence/breezewiki
       build_arch: linux/amd64
     permissions:
