@@ -147,7 +147,7 @@ jobs:
       run: git pull
 
     - name: Update build commit
-      run: git ls-remote ${{ env.REPO }} HEAD > ${{ env.HASH_FILE }}
+      run: git ls-remote ${{ env.REPO }} ${{ inputs.branch }} > ${{ env.HASH_FILE }}
 
     - name: commit and push hash update
       uses: stefanzweifel/git-auto-commit-action@v4
