@@ -34,6 +34,7 @@ jobs:
       # quetre: ${{ steps.quetre.outputs.quetre-out-of-date || steps.trigger-all.outputs.build-all }}
       scribe: ${{ steps.scribe.outputs.scribe-out-of-date || steps.trigger-all.outputs.build-all }}
       breezewiki: ${{ steps.breezewiki.outputs.breezewiki-out-of-date || steps.trigger-all.outputs.build-all }}
+      nitter: ${{ steps.nitter.outputs.nitter-out-of-date || steps.trigger-all.outputs.build-all }}
     # clone repo
     steps:
       - name: Checkout repository
