@@ -24,6 +24,10 @@ on:
       repo:
         required: true
         type: string
+      branch:
+        required: false
+        default: 'main'
+        type: string
       build_arch:
         required: true
         type: string
@@ -50,6 +54,7 @@ jobs:
       HASH_FILE: ${{ inputs.hash_file }}
       APP_NAME: ${{ inputs.app_name }}
       REPO: ${{ inputs.repo }}
+      BRANCH: ${{ inputs.branch }}
       build_arch: ${{ inputs.build_arch }}
     steps:
       - name: Checkout repository
@@ -107,7 +112,7 @@ jobs:
       - name: Clone git repo for docker context
         if: env.CLONE_REPO == 'true'
         run: |
-          git clone ${{ env.REPO }} ${{ env.CONTEXT }}
+          git clone --branch ${{ env.BRANCH }} ${{ env.REPO }} ${{ env.CONTEXT }}
           cp ${{ env.DOCKER_FILE }} ${{ env.CONTEXT }}/${{ env.DOCKER_FILE }}
 
       # Build and push Docker image with Buildx (don't push on PR)
