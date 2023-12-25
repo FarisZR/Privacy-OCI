@@ -20,6 +20,7 @@ on:
       - "Dockerfile-scribe"
       - "Dockerfile-quetre"
       - "Dockerfile-breezewiki"
+      - "Dockerfile-nitter"
       - "remote-check.sh"
   # Automated
   schedule:
@@ -58,6 +59,11 @@ jobs:
         if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
         id: breezewiki
         run: sh remote-check.sh https://gitdab.com/cadence/breezewiki breezewiki-local.txt build-hashes/breezewiki.txt breezewiki-out-of-date
+
+      - name: Pull Nitter guest_accounts remote commits
+        if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
+        id: nitter
+        run: sh remote-check.sh https://github.com/zedeus/nitter nitter-local.txt build-hashes/nitter.txt nitter-out-of-date guest_accounts
 
   # build-quetre:
   #   needs: check-for-updates
@@ -118,6 +124,29 @@ jobs:
       app_name: breezewiki
       repo: https://gitdab.com/cadence/breezewiki
       build_arch: linux/amd64
+    permissions:
+      contents: write
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+  build-nitter:
+    needs: check-for-updates
+    if: ${{ needs.check-for-updates.outputs.nitter == 'true' }}
+    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+    secrets: inherit
+    with:
+      image_name: fariszr/nitter
+      dockerfile: Dockerfile-nitter
+      context: ./nitter
+      license: AGPL-3.0
+      clone_repo: ${{ true }}
+      hash_file: build-hashes/nitter.txt
+      app_name: nitter
+      branch: guest_accounts
+      repo: https://github.com/zedeus/nitter
+      build_arch: linux/amd64, linux/arm64
     permissions:
       contents: write
       packages: write
