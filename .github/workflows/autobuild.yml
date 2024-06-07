@@ -21,6 +21,7 @@ on:
       - "Dockerfile-quetre"
       - "Dockerfile-breezewiki"
       - "Dockerfile-nitter"
+      - "Dockerfile-simplytranslate"
       - "remote-check.sh"
   # Automated
   schedule:
@@ -35,6 +36,7 @@ jobs:
       scribe: ${{ steps.scribe.outputs.scribe-out-of-date || steps.trigger-all.outputs.build-all }}
       breezewiki: ${{ steps.breezewiki.outputs.breezewiki-out-of-date || steps.trigger-all.outputs.build-all }}
       nitter: ${{ steps.nitter.outputs.nitter-out-of-date || steps.trigger-all.outputs.build-all }}
+      simplytranslate: ${{ steps.simplytranslate.outputs.simplytranslate-out-of-date || steps.trigger-all.outputs.build-all }}
     # clone repo
     steps:
       - name: Checkout repository
@@ -65,6 +67,11 @@ jobs:
         if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
         id: nitter
         run: sh remote-check.sh https://github.com/zedeus/nitter nitter-local.txt build-hashes/nitter.txt nitter-out-of-date guest_accounts
+
+      - name: Pull simplytranslate remote commits
+        if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
+        id: simplytranslate
+        run: sh remote-check.sh https://codeberg.org/ManeraKai/simplytranslate simplytranslate-local.txt build-hashes/simplytranslate.txt simplytranslate-out-of-date
 
   # build-quetre:
   #   needs: check-for-updates
@@ -147,6 +154,28 @@ jobs:
       app_name: nitter
       branch: guest_accounts
       repo: https://github.com/zedeus/nitter
+      build_arch: linux/amd64, linux/arm64
+    permissions:
+      contents: write
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+  build-simplytranslate:
+    needs: check-for-updates
+    if: ${{ needs.check-for-updates.outputs.simplytranslate == 'true' }}
+    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+    secrets: inherit
+    with:
+      image_name: fariszr/simplytranslate
+      dockerfile: Dockerfile-simplytranslate
+      context: ./simplytranslate
+      license: AGPL-3.0
+      clone_repo: ${{ true }}
+      hash_file: build-hashes/simplytranslate.txt
+      app_name: simplytranslate
+      repo: https://github.com/ManeraKai/simplytranslate
       build_arch: linux/amd64, linux/arm64
     permissions:
       contents: write

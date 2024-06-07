@@ -10,7 +10,7 @@ A Github action runs every hour to check for updates, and if there are any new c
 ### Breezewiki && Bibliogram
 - AMD64
 
-### Scribe && Nitter
+### Scribe & Nitter & Simplytranslate
 - AMD64
 - ARM64
 
