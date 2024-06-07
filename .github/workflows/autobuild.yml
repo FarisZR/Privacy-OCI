@@ -175,7 +175,7 @@ jobs:
       clone_repo: ${{ true }}
       hash_file: build-hashes/simplytranslate.txt
       app_name: simplytranslate
-      repo: https://github.com/ManeraKai/simplytranslate
+      repo: https://codeberg.org/ManeraKai/simplytranslate
       build_arch: linux/amd64, linux/arm64
     permissions:
       contents: write
