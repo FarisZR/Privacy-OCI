@@ -1,5 +1,5 @@
 # Privacy-OCI
-Automatically built container images for alternative frontends Quetre, scribe, Breezewiki and the Guest account branch of Nitter
+Automatically built container images for alternative frontends Quetre, scribe and Breezewiki
 
 **Bibliogram is Deprecated and no longer supported by the developer**
 
@@ -10,7 +10,7 @@ A Github action runs every hour to check for updates, and if there are any new c
 ### Breezewiki && Bibliogram
 - AMD64
 
-### Scribe & Nitter & Simplytranslate
+### Scribe & Simplytranslate
 - AMD64
 - ARM64
 
