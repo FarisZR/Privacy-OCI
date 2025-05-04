@@ -100,7 +100,7 @@ jobs:
       license: AGPL-3.0
       clone_repo: ${{ true }}
       hash_file: build-hashes/scribe.txt
-      app_name: quetre
+      app_name: scribe
       repo: https://git.sr.ht/~edwardloveall/scribe
       build_arch: linux/amd64,linux/arm64
     permissions:
