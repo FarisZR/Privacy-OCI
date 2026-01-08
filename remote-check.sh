@@ -6,7 +6,7 @@ MODE=${6:-commit}
 local="$2"
 remote="$3"
 
-set -euo pipefail
+set -eu
 
 if [ "$MODE" = "release" ]; then
     # Expecting a GitHub repo URL; extract the owner/repo slug.
