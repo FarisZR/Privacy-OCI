@@ -28,6 +28,10 @@ on:
         required: false
         default: 'main'
         type: string
+      release_mode:
+        required: false
+        default: false
+        type: boolean
       build_arch:
         required: true
         type: string
@@ -56,6 +60,7 @@ jobs:
       REPO: ${{ inputs.repo }}
       BRANCH: ${{ inputs.branch }}
       build_arch: ${{ inputs.build_arch }}
+      RELEASE_MODE: ${{ inputs.release_mode }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -139,18 +144,33 @@ jobs:
     env:
       HASH_FILE: ${{ inputs.hash_file }}
       REPO: ${{ inputs.repo }}
+      RELEASE_MODE: ${{ inputs.release_mode }}
+      BRANCH: ${{ inputs.branch }}
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: fetch latest commits
-      run: git pull
+      - name: fetch latest commits
+        run: git pull
 
-    - name: Update build commit
-      run: git ls-remote ${{ env.REPO }} ${{ inputs.branch }} > ${{ env.HASH_FILE }}
+      - name: Update build commit
+        run: |
+          if [ "$RELEASE_MODE" = "true" ]; then
+            repo_slug=$(echo "$REPO" | sed -E 's#(git@|https://)([^/:]+)[:/]([^/]+/[^/.]+)(\.git)?#\3#')
+            release_json=$(curl -fsSL "https://api.github.com/repos/$repo_slug/releases/latest")
+            tag=$(echo "$release_json" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name"\s*:\s*"([^"]+)".*/\1/')
+            rel_id=$(echo "$release_json" | grep -m1 '"id"' | sed -E 's/.*"id"\s*:\s*([0-9]+).*/\1/')
+            if [ -z "$tag" ] || [ -z "$rel_id" ]; then
+              echo "Failed to read release info" >&2
+              exit 1
+            fi
+            printf "%s %s\n" "$tag" "$rel_id" > "$HASH_FILE"
+          else
+            git ls-remote "$REPO" "$BRANCH" > "$HASH_FILE"
+          fi
 
-    - name: commit and push hash update
-      uses: stefanzweifel/git-auto-commit-action@v4
-      with:
-        file_pattern: ${{ inputs.hash_file }}
-        commit_message: update ${{ inputs.app_name }} build commit
+      - name: commit and push hash update
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          file_pattern: ${{ inputs.hash_file }}
+          commit_message: update ${{ inputs.app_name }} build commit

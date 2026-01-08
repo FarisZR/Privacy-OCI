@@ -1,0 +1,31 @@
+FROM ghcr.io/ggml-org/whisper.cpp:main
+
+# Build whisper.cpp with Vulkan support and include Vulkan runtime pieces for AMD GPUs.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential cmake pkg-config git ca-certificates wget gnupg \
+    libvulkan-dev mesa-vulkan-drivers vulkan-tools \
+    libavcodec-dev libavformat-dev libavutil-dev libswresample-dev ffmpeg \
+    libgoogle-perftools-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install LunarG's shaderc (provides 'glslc') since Ubuntu's repos don't ship glslc.
+RUN set -e; \
+  wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | gpg --dearmor -o /usr/share/keyrings/lunarg.gpg; \
+  echo "deb [signed-by=/usr/share/keyrings/lunarg.gpg] https://packages.lunarg.com/vulkan/ jammy main" > /etc/apt/sources.list.d/lunarg-vulkan.list; \
+  apt-get update; \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends shaderc; \
+  rm -rf /var/lib/apt/lists/*
+
+# Ubuntu 22.04's Vulkan headers are too old for current ggml-vulkan; replace them with newer Khronos headers.
+RUN git clone --depth 1 --branch v1.3.280 https://github.com/KhronosGroup/Vulkan-Headers.git /tmp/Vulkan-Headers \
+ && cp -a /tmp/Vulkan-Headers/include/. /usr/include/ \
+ && rm -rf /tmp/Vulkan-Headers
+
+WORKDIR /app
+
+# Rebuild the binaries with Vulkan enabled.
+RUN rm -rf build \
+ && cmake -B build -DGGML_VULKAN=1 -DWHISPER_FFMPEG=1 -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_C_FLAGS="-march=native" -DCMAKE_CXX_FLAGS="-march=native" \
+ && cmake --build build -j --config Release --target whisper-server \
+ && test -x /app/build/bin/whisper-server
