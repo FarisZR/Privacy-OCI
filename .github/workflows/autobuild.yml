@@ -16,11 +16,13 @@ on:
         required: true
   push:
     paths:
-      - ".github/workflows/autobuild.yaml"
+      - ".github/workflows/autobuild.yml"
       - "Dockerfile-scribe"
       - "Dockerfile-quetre"
       - "Dockerfile-breezewiki"
       - "Dockerfile-simplytranslate"
+      - "Dockerfile-sticktock-webapp"
+      - "Dockerfile-sticktock-api"
       - "remote-check.sh"
   # Automated
   schedule:
@@ -36,6 +38,7 @@ jobs:
       breezewiki: ${{ steps.breezewiki.outputs.breezewiki-out-of-date || steps.trigger-all.outputs.build-all }}
       simplytranslate: ${{ steps.simplytranslate.outputs.simplytranslate-out-of-date || steps.trigger-all.outputs.build-all }}
       whisper: ${{ steps.whisper.outputs.whisper-out-of-date || steps.trigger-all.outputs.build-all }}
+      sticktock: ${{ steps.sticktock.outputs.sticktock_out_of_date || steps.trigger-all.outputs.build-all }}
     # clone repo
     steps:
       - name: Checkout repository
@@ -71,6 +74,11 @@ jobs:
         if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
         id: whisper
         run: sh remote-check.sh https://github.com/ggml-org/whisper.cpp whisper-local.txt build-hashes/whisper.txt whisper-out-of-date HEAD release
+
+      - name: Pull StickTock remote commits
+        if: ${{ github.event.inputs.trigger_all_builds == 'false' || github.event.inputs.trigger_all_builds == '' }}
+        id: sticktock
+        run: sh remote-check.sh https://github.com/PrivacySafe/sticktock sticktock-local.txt build-hashes/sticktock.txt sticktock_out_of_date main
 
   build-quetre:
     needs: check-for-updates
@@ -177,6 +185,82 @@ jobs:
       branch: main
       release_mode: true
       build_arch: linux/amd64
+    permissions:
+      contents: write
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+  build-sticktock-webapp:
+    needs: check-for-updates
+    if: ${{ needs.check-for-updates.outputs.sticktock == 'true' }}
+    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+    secrets: inherit
+    with:
+      image_name: fariszr/sticktock-webapp
+      dockerfile: Dockerfile-sticktock-webapp
+      context: .
+      license: AGPL-3.0
+      clone_repo: ${{ false }}
+      hash_file: build-hashes/sticktock.txt
+      app_name: sticktock-webapp
+      repo: https://github.com/PrivacySafe/sticktock
+      branch: main
+      build_arch: linux/amd64,linux/arm64
+      update_hash: ${{ false }}
+    permissions:
+      contents: write
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+  build-sticktock-api:
+    needs: check-for-updates
+    if: ${{ needs.check-for-updates.outputs.sticktock == 'true' }}
+    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+    secrets: inherit
+    with:
+      image_name: fariszr/sticktock-api
+      dockerfile: Dockerfile-sticktock-api
+      context: .
+      license: AGPL-3.0
+      clone_repo: ${{ false }}
+      hash_file: build-hashes/sticktock.txt
+      app_name: sticktock-api
+      repo: https://github.com/PrivacySafe/sticktock
+      branch: main
+      build_arch: linux/amd64,linux/arm64
+      update_hash: ${{ false }}
+    permissions:
+      contents: write
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+  update-sticktock-hash:
+    needs:
+      - check-for-updates
+      - build-sticktock-webapp
+      - build-sticktock-api
+    if: ${{ needs.check-for-updates.outputs.sticktock == 'true' }}
+    uses: FarisZR/Privacy-OCI/.github/workflows/build-workflow.yml@main
+    secrets: inherit
+    with:
+      image_name: fariszr/sticktock
+      dockerfile: Dockerfile-sticktock-webapp
+      context: .
+      license: AGPL-3.0
+      clone_repo: ${{ false }}
+      hash_file: build-hashes/sticktock.txt
+      app_name: sticktock
+      repo: https://github.com/PrivacySafe/sticktock
+      branch: main
+      build_arch: linux/amd64
+      update_hash: ${{ true }}
+      perform_build: ${{ false }}
     permissions:
       contents: write
       packages: write

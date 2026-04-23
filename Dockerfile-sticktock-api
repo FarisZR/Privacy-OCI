@@ -1,0 +1,28 @@
+FROM node:lts
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone upstream StickTock source during the image build.
+RUN git clone --depth 1 --branch main https://github.com/PrivacySafe/sticktock.git /app
+
+WORKDIR /app/backend-api
+
+RUN npm ci
+RUN npm run build
+
+ENV NODE_ENV=production
+
+# Keep only the API runtime bits.
+RUN rm -rf /app/frontend /app/.git
+
+VOLUME /var/local/sticktock
+
+EXPOSE 2000
+
+CMD ["npm", "run", "start"]

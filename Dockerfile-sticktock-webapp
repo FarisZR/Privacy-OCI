@@ -1,0 +1,29 @@
+FROM node:lts
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+WORKDIR /app
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone upstream StickTock source during the image build.
+RUN git clone --depth 1 --branch main https://github.com/PrivacySafe/sticktock.git /app
+
+WORKDIR /app/frontend
+
+# Set the public domain that the upstream app expects.
+RUN sed -i "s/example.com/sticktock.com/" service.config.ts
+
+RUN npm ci
+RUN npm run build
+
+ENV NODE_ENV=production
+
+# Keep only the frontend runtime bits.
+RUN rm -rf /app/backend-api /app/.git
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

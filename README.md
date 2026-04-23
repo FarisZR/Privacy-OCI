@@ -1,5 +1,5 @@
 # Privacy-OCI
-Automatically built container images for alternative frontends Quetre, scribe and Breezewiki
+Automatically built container images for alternative frontends Quetre, scribe, Breezewiki, Simplytranslate, whisper.cpp, and StickTock
 
 **Bibliogram is Deprecated and no longer supported by the developer**
 
