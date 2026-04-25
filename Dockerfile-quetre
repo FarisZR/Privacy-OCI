@@ -4,7 +4,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 RUN apk add --no-cache git
-RUN wget "https://github.com/pnpm/pnpm/releases/latest/download/pnpm-linuxstatic-x64" -O /bin/pnpm && chmod +x /bin/pnpm
+RUN corepack enable && corepack prepare pnpm@8 --activate
 
 RUN git clone --depth 1 https://github.com/zyachel/quetre.git . && rm -rf .git .github *.md .gitignore .eslintrc.json quetre.service && mv .env.example .env
 RUN pnpm install
