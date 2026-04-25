@@ -17,7 +17,6 @@ A Github action runs every hour to check for updates, and if there are any new c
 ### Quetre
 - AMD64
 - ARM64
-- ARMv7
 
 ## Registries 
 - `oci.fariszr.com` (Recommended, it's a redirect to [Quay.io](https://quay.io), and in the case of a new [rug pull](https://httptoolkit.com/blog/docker-image-registry-facade/), I can move to another host without changing the URL)

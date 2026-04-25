@@ -94,7 +94,7 @@ jobs:
       hash_file: build-hashes/quetre.txt
       app_name: quetre
       repo: https://github.com/zyachel/quetre
-      build_arch: linux/amd64,linux/arm64,linux/arm/v7
+      build_arch: linux/amd64,linux/arm64
     permissions:
       contents: write
       packages: write
